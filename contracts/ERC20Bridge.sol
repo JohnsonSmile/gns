@@ -2,7 +2,7 @@
 import "@layerzerolabs/solidity-examples/contracts/lzApp/NonblockingLzApp.sol";
 import "./abstract/ERC20BridgeRateLimiter.sol";
 
-pragma solidity 0.8.17;
+pragma solidity 0.8.14;
 
 contract ERC20Bridge is NonblockingLzApp, ERC20BridgeRateLimiter {
 

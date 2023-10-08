@@ -2,7 +2,7 @@
 import { ERC20, ERC20Capped } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Capped.sol";
 import { AccessControlEnumerable } from "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 
-pragma solidity 0.8.17;
+pragma solidity 0.8.14;
 
 contract GainsNetworkToken is ERC20Capped, AccessControlEnumerable {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");

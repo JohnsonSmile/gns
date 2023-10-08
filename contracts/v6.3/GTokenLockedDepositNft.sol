@@ -5,7 +5,7 @@ import '@openzeppelin/contracts/interfaces/IERC4626.sol';
 
 import '../interfaces/IGTokenLockedDepositNftDesign.sol';
 
-pragma solidity 0.8.17;
+pragma solidity 0.8.14;
 
 contract GTokenLockedDepositNft is ERC721Enumerable{
     address public immutable gToken;

@@ -1,50 +1,352 @@
+// File: contracts\interfaces\UniswapRouterInterfaceV5.sol
 // SPDX-License-Identifier: MIT
-import './interfaces/StorageInterfaceV5.sol';
-import './interfaces/GNSPairInfosInterfaceV6.sol';
+
 pragma solidity 0.8.14;
 
-contract GNSTradingV6_1{
+interface UniswapRouterInterfaceV5{
+	function swapExactTokensForTokens(
+		uint amountIn,
+		uint amountOutMin,
+		address[] calldata path,
+		address to,
+		uint deadline
+	) external returns (uint[] memory amounts);
+
+	function swapTokensForExactTokens(
+		uint amountOut,
+		uint amountInMax,
+		address[] calldata path,
+		address to,
+		uint deadline
+	) external returns (uint[] memory amounts);
+}
+
+// File: contracts\interfaces\TokenInterfaceV5.sol
+
+pragma solidity 0.8.14;
+
+interface TokenInterfaceV5{
+    function burn(address, uint256) external;
+    function mint(address, uint256) external;
+    function transfer(address, uint256) external returns (bool);
+    function transferFrom(address, address, uint256) external returns(bool);
+    function balanceOf(address) external view returns(uint256);
+    function hasRole(bytes32, address) external view returns (bool);
+    function approve(address, uint256) external returns (bool);
+    function allowance(address, address) external view returns (uint256);
+}
+
+// File: contracts\interfaces\NftInterfaceV5.sol
+
+pragma solidity 0.8.14;
+
+interface NftInterfaceV5{
+    function balanceOf(address) external view returns (uint);
+    function ownerOf(uint) external view returns (address);
+    function transferFrom(address, address, uint) external;
+    function tokenOfOwnerByIndex(address, uint) external view returns(uint);
+}
+
+// File: contracts\interfaces\VaultInterfaceV5.sol
+
+pragma solidity 0.8.14;
+
+interface VaultInterfaceV5{
+	function sendDaiToTrader(address, uint) external;
+	function receiveDaiFromTrader(address, uint, uint) external;
+	function currentBalanceDai() external view returns(uint);
+	function distributeRewardDai(uint) external;
+}
+
+// File: contracts\interfaces\PairsStorageInterfaceV6.sol
+
+pragma solidity 0.8.14;
+
+interface PairsStorageInterfaceV6{
+    enum FeedCalculation { DEFAULT, INVERT, COMBINE }    // FEED 1, 1 / (FEED 1), (FEED 1)/(FEED 2)
+    struct Feed{ address feed1; address feed2; FeedCalculation feedCalculation; uint maxDeviationP; } // PRECISION (%)
+    function incrementCurrentOrderId() external returns(uint);
+    function updateGroupCollateral(uint, uint, bool, bool) external;
+    function pairJob(uint) external returns(string memory, string memory, bytes32, uint);
+    function pairFeed(uint) external view returns(Feed memory);
+    function pairSpreadP(uint) external view returns(uint);
+    function pairMinLeverage(uint) external view returns(uint);
+    function pairMaxLeverage(uint) external view returns(uint);
+    function groupMaxCollateral(uint) external view returns(uint);
+    function groupCollateral(uint, bool) external view returns(uint);
+    function guaranteedSlEnabled(uint) external view returns(bool);
+    function pairOpenFeeP(uint) external view returns(uint);
+    function pairCloseFeeP(uint) external view returns(uint);
+    function pairOracleFeeP(uint) external view returns(uint);
+    function pairNftLimitOrderFeeP(uint) external view returns(uint);
+    function pairReferralFeeP(uint) external view returns(uint);
+    function pairMinLevPosDai(uint) external view returns(uint);
+}
+
+// File: contracts\interfaces\StorageInterfaceV5.sol
+
+pragma solidity 0.8.14;
+
+interface StorageInterfaceV5{
+    enum LimitOrder { TP, SL, LIQ, OPEN }
+    struct Trader{
+        uint leverageUnlocked;
+        address referral;
+        uint referralRewardsTotal;  // 1e18
+    }
+    struct Trade{
+        address trader;
+        uint pairIndex;
+        uint index;
+        uint initialPosToken;       // 1e18
+        uint positionSizeDai;       // 1e18
+        uint openPrice;             // PRECISION
+        bool buy;
+        uint leverage;
+        uint tp;                    // PRECISION
+        uint sl;                    // PRECISION
+    }
+    struct TradeInfo{
+        uint tokenId;
+        uint tokenPriceDai;         // PRECISION
+        uint openInterestDai;       // 1e18
+        uint tpLastUpdated;
+        uint slLastUpdated;
+        bool beingMarketClosed;
+    }
+    struct OpenLimitOrder{
+        address trader;
+        uint pairIndex;
+        uint index;
+        uint positionSize;          // 1e18 (DAI or GFARM2)
+        uint spreadReductionP;
+        bool buy;
+        uint leverage;
+        uint tp;                    // PRECISION (%)
+        uint sl;                    // PRECISION (%)
+        uint minPrice;              // PRECISION
+        uint maxPrice;              // PRECISION
+        uint block;
+        uint tokenId;               // index in supportedTokens
+    }
+    struct PendingMarketOrder{
+        Trade trade;
+        uint block;
+        uint wantedPrice;           // PRECISION
+        uint slippageP;             // PRECISION (%)
+        uint spreadReductionP;
+        uint tokenId;               // index in supportedTokens
+    }
+    struct PendingNftOrder{
+        address nftHolder;
+        uint nftId;
+        address trader;
+        uint pairIndex;
+        uint index;
+        LimitOrder orderType;
+    }
+    function PRECISION() external pure returns(uint);
+    function gov() external view returns(address);
+    function dev() external view returns(address);
+    function dai() external view returns(TokenInterfaceV5);
+    function token() external view returns(TokenInterfaceV5);
+    function linkErc677() external view returns(TokenInterfaceV5);
+    function tokenDaiRouter() external view returns(UniswapRouterInterfaceV5);
+    function priceAggregator() external view returns(AggregatorInterfaceV6);
+    function vault() external view returns(VaultInterfaceV5);
+    function trading() external view returns(address);
+    function callbacks() external view returns(address);
+    function handleTokens(address,uint,bool) external;
+    function transferDai(address, address, uint) external;
+    function transferLinkToAggregator(address, uint, uint) external;
+    function unregisterTrade(address, uint, uint) external;
+    function unregisterPendingMarketOrder(uint, bool) external;
+    function unregisterOpenLimitOrder(address, uint, uint) external;
+    function hasOpenLimitOrder(address, uint, uint) external view returns(bool);
+    function storePendingMarketOrder(PendingMarketOrder memory, uint, bool) external;
+    function storeReferral(address, address) external;
+    function openTrades(address, uint, uint) external view returns(Trade memory);
+    function openTradesInfo(address, uint, uint) external view returns(TradeInfo memory);
+    function updateSl(address, uint, uint, uint) external;
+    function updateTp(address, uint, uint, uint) external;
+    function getOpenLimitOrder(address, uint, uint) external view returns(OpenLimitOrder memory);
+    function spreadReductionsP(uint) external view returns(uint);
+    function positionSizeTokenDynamic(uint,uint) external view returns(uint);
+    function maxSlP() external view returns(uint);
+    function storeOpenLimitOrder(OpenLimitOrder memory) external;
+    function reqID_pendingMarketOrder(uint) external view returns(PendingMarketOrder memory);
+    function storePendingNftOrder(PendingNftOrder memory, uint) external;
+    function updateOpenLimitOrder(OpenLimitOrder calldata) external;
+    function firstEmptyTradeIndex(address, uint) external view returns(uint);
+    function firstEmptyOpenLimitIndex(address, uint) external view returns(uint);
+    function increaseNftRewards(uint, uint) external;
+    function nftSuccessTimelock() external view returns(uint);
+    function currentPercentProfit(uint,uint,bool,uint) external view returns(int);
+    function reqID_pendingNftOrder(uint) external view returns(PendingNftOrder memory);
+    function setNftLastSuccess(uint) external;
+    function updateTrade(Trade memory) external;
+    function nftLastSuccess(uint) external view returns(uint);
+    function unregisterPendingNftOrder(uint) external;
+    function handleDevGovFees(uint, uint, bool, bool) external returns(uint);
+    function distributeLpRewards(uint) external;
+    function getReferral(address) external view returns(address);
+    function increaseReferralRewards(address, uint) external;
+    function storeTrade(Trade memory, TradeInfo memory) external;
+    function setLeverageUnlocked(address, uint) external;
+    function getLeverageUnlocked(address) external view returns(uint);
+    function openLimitOrdersCount(address, uint) external view returns(uint);
+    function maxOpenLimitOrdersPerPair() external view returns(uint);
+    function openTradesCount(address, uint) external view returns(uint);
+    function pendingMarketOpenCount(address, uint) external view returns(uint);
+    function pendingMarketCloseCount(address, uint) external view returns(uint);
+    function maxTradesPerPair() external view returns(uint);
+    function maxTradesPerBlock() external view returns(uint);
+    function tradesPerBlock(uint) external view returns(uint);
+    function pendingOrderIdsCount(address) external view returns(uint);
+    function maxPendingMarketOrders() external view returns(uint);
+    function maxGainP() external view returns(uint);
+    function defaultLeverageUnlocked() external view returns(uint);
+    function openInterestDai(uint, uint) external view returns(uint);
+    function getPendingOrderIds(address) external view returns(uint[] memory);
+    function traders(address) external view returns(Trader memory);
+    function nfts(uint) external view returns(NftInterfaceV5);
+}
+
+interface AggregatorInterfaceV6{
+    enum OrderType { MARKET_OPEN, MARKET_CLOSE, LIMIT_OPEN, LIMIT_CLOSE, UPDATE_SL }
+    function pairsStorage() external view returns(PairsStorageInterfaceV6);
+    function nftRewards() external view returns(NftRewardsInterfaceV6);
+    function getPrice(uint,OrderType,uint) external returns(uint);
+    function tokenPriceDai() external view returns(uint);
+    function linkFee(uint,uint) external view returns(uint);
+    function tokenDaiReservesLp() external view returns(uint, uint);
+    function pendingSlOrders(uint) external view returns(PendingSl memory);
+    function storePendingSlOrder(uint orderId, PendingSl calldata p) external;
+    function unregisterPendingSlOrder(uint orderId) external;
+    struct PendingSl{address trader; uint pairIndex; uint index; uint openPrice; bool buy; uint newSl; }
+}
+
+interface NftRewardsInterfaceV6{
+    struct TriggeredLimitId{ address trader; uint pairIndex; uint index; StorageInterfaceV5.LimitOrder order; }
+    enum OpenLimitOrderType{ LEGACY, REVERSAL, MOMENTUM }
+    function storeFirstToTrigger(TriggeredLimitId calldata, address) external;
+    function storeTriggerSameBlock(TriggeredLimitId calldata, address) external;
+    function unregisterTrigger(TriggeredLimitId calldata) external;
+    function distributeNftReward(TriggeredLimitId calldata, uint) external;
+    function openLimitOrderTypes(address, uint, uint) external view returns(OpenLimitOrderType);
+    function setOpenLimitOrderType(address, uint, uint, OpenLimitOrderType) external;
+    function triggered(TriggeredLimitId calldata) external view returns(bool);
+    function timedOut(TriggeredLimitId calldata) external view returns(bool);
+}
+
+// File: contracts\interfaces\GNSPairInfosInterfaceV6.sol
+
+pragma solidity 0.8.14;
+
+interface GNSPairInfosInterfaceV6{
+    function maxNegativePnlOnOpenP() external view returns(uint); // PRECISION (%)
+
+    function storeTradeInitialAccFees(
+        address trader,
+        uint pairIndex,
+        uint index,
+        bool long
+    ) external;
+
+    function getTradePriceImpact(
+        uint openPrice,   // PRECISION
+        uint pairIndex,
+        bool long,
+        uint openInterest // 1e18 (DAI)
+    ) external view returns(
+        uint priceImpactP,      // PRECISION (%)
+        uint priceAfterImpact   // PRECISION
+    );
+
+   function getTradeLiquidationPrice(
+        address trader,
+        uint pairIndex,
+        uint index,
+        uint openPrice,  // PRECISION
+        bool long,
+        uint collateral, // 1e18 (DAI)
+        uint leverage
+    ) external view returns(uint); // PRECISION
+
+    function getTradeValue(
+        address trader,
+        uint pairIndex,
+        uint index,
+        bool long,
+        uint collateral,   // 1e18 (DAI)
+        uint leverage,
+        int percentProfit, // PRECISION (%)
+        uint closingFee    // 1e18 (DAI)
+    ) external returns(uint); // 1e18 (DAI)
+}
+
+// File: contracts\GNSTradingCallbacksV6_1.sol
+
+pragma solidity 0.8.14;
+
+contract GNSTradingCallbacksV6_1{
 
     // Contracts (constant)
     StorageInterfaceV5 immutable storageT;
     GNSPairInfosInterfaceV6 immutable pairInfos;
 
     // Params (constant)
-    uint constant PRECISION = 1e10;
-    uint constant MAX_SL_P = 75;            // -75% PNL
+    uint constant PRECISION = 1e10;     // 10 decimals
+
+    uint constant MAX_SL_P = 75;        // -75% PNL
+    uint constant MAX_GAIN_P = 900;     // 900% PnL (10x)
 
     // Params (adjustable)
-    uint public maxPosDai = 75000 * 1e18;   // 1e18 ($)
-
-    uint public limitOrdersTimelock = 30;   // block
-    uint public marketOrdersTimeout = 30;   // block
+    uint public vaultFeeP = 10;         // %
 
     // State
-    bool public isPaused;   // Prevent opening new trades
-    bool public isDone;     // Prevent any interaction with the contract
+    bool public isPaused;               // Prevent opening new trades
+    bool public isDone;                 // Prevent any interaction with the contract
+
+    // Custom data types
+    struct AggregatorAnswer{ uint orderId; uint price; uint spreadP; }
+    struct Values{ uint price; int profitP; uint tokenPriceDai; uint posToken; uint posDai; uint nftReward; }
 
     // Events
-    event Done(bool done);
-    event Paused(bool paused);
+    event MarketExecuted(
+        uint orderId,
+        StorageInterfaceV5.Trade t,
+        bool open,
+        uint price,
+        uint priceImpactP,
+        uint positionSizeDai,
+        int percentProfit,
+        uint daiSentToTrader
+    );
+    event LimitExecuted(
+        uint orderId,
+        uint limitIndex,
+        StorageInterfaceV5.Trade t,
+        address nftHolder,
+        StorageInterfaceV5.LimitOrder orderType,
+        uint price,
+        uint priceImpactP,
+        uint positionSizeDai,
+        int percentProfit,
+        uint daiSentToTrader
+    );
 
-    event NumberUpdated(string name, uint value);
+    event MarketOpenCanceled(uint orderId, address trader, uint pairIndex);
+    event MarketCloseCanceled(uint orderId, address trader, uint pairIndex, uint index);
+
+    event SlUpdated(uint orderId, address trader, uint pairIndex, uint index, uint newSl);
+    event SlCanceled(uint orderId, address trader, uint pairIndex, uint index);
+
     event AddressUpdated(string name, address a);
-
-    event MarketOrderInitiated(address trader, uint pairIndex, bool open, uint orderId);
-
-    event NftOrderInitiated(address nftHolder, address trader, uint pairIndex, uint orderId);
-    event NftOrderSameBlock(address nftHolder, address trader, uint pairIndex);
-
-    event OpenLimitPlaced(address trader, uint pairIndex, uint index);
-    event OpenLimitUpdated(address trader, uint pairIndex, uint index, uint newPrice, uint newTp, uint newSl);
-    event OpenLimitCanceled(address trader, uint pairIndex, uint index);
-
-    event TpUpdated(address trader, uint pairIndex, uint index, uint newTp);
-    event SlUpdated(address trader, uint pairIndex, uint index, uint newSl);
-    event SlUpdateInitiated(address trader, uint pairIndex, uint index, uint newSl, uint orderId);
-
-    event ChainlinkCallbackTimeout(uint orderId, StorageInterfaceV5.PendingMarketOrder order);
-    event CouldNotCloseTrade(address trader, uint pairIndex, uint index);
+    event NumberUpdated(string name, uint value);
+    
+    event Pause(bool paused);
+    event Done(bool done);
 
     constructor(StorageInterfaceV5 _storageT, GNSPairInfosInterfaceV6 _pairInfos) {
         storageT = _storageT;
@@ -53,405 +355,407 @@ contract GNSTradingV6_1{
 
     // Modifiers
     modifier onlyGov(){ require(msg.sender == storageT.gov(), "GOV_ONLY"); _; }
-    modifier notContract(){ require(tx.origin == msg.sender); _; }
+    modifier onlyPriceAggregator(){ require(msg.sender == address(storageT.priceAggregator()), "AGGREGATOR_ONLY"); _; }
     modifier notDone(){ require(!isDone, "DONE"); _; }
 
     // Manage params
-    function setMaxPosDai(uint _max) external onlyGov{
-        require(_max > 0, "VALUE_0");
-        maxPosDai = _max;
-        emit NumberUpdated("maxPosDai", _max);
-    }
-    function setLimitOrdersTimelock(uint _blocks) external onlyGov{
-        require(_blocks > 0, "VALUE_0");
-        limitOrdersTimelock = _blocks;
-        emit NumberUpdated("limitOrdersTimelock", _blocks);
-    }
-    function setMarketOrdersTimeout(uint _marketOrdersTimeout) external onlyGov{
-        require(_marketOrdersTimeout > 0, "VALUE_0");
-        marketOrdersTimeout = _marketOrdersTimeout;
-        emit NumberUpdated("marketOrdersTimeout", _marketOrdersTimeout);
+    function setVaultFeeP(uint _vaultFeeP) external onlyGov{
+        require(_vaultFeeP <= 50, "ABOVE_50");
+        vaultFeeP = _vaultFeeP;
+        emit NumberUpdated("vaultFeeP", _vaultFeeP);
     }
 
     // Manage state
-    function pause() external onlyGov{ isPaused = !isPaused; emit Paused(isPaused); }
+    function pause() external onlyGov{ isPaused = !isPaused; emit Pause(isPaused); }
     function done() external onlyGov{ isDone = !isDone; emit Done(isDone); }
 
-    // Open new trade (MARKET/LIMIT)
-    function openTrade(
-        StorageInterfaceV5.Trade memory t,
-        NftRewardsInterfaceV6.OpenLimitOrderType _type,
-        uint _spreadReductionId,
-        uint _slippageP,            // for market orders
-        address _referral
-    ) external notContract notDone{
+    // Callbacks
+    function openTradeMarketCallback(AggregatorAnswer memory a) external onlyPriceAggregator notDone{
 
-        require(!isPaused, "PAUSED");
+        StorageInterfaceV5.PendingMarketOrder memory o = storageT.reqID_pendingMarketOrder(a.orderId);
+        if(o.block == 0){ return; }
+        
+        StorageInterfaceV5.Trade memory t = o.trade;
 
-        AggregatorInterfaceV6 aggregator = storageT.priceAggregator();
-        PairsStorageInterfaceV6 pairsStored = aggregator.pairsStorage();
-
-        uint spreadReductionP = _spreadReductionId > 0 ? storageT.spreadReductionsP(_spreadReductionId-1) : 0;
-
-        require(storageT.openTradesCount(msg.sender, t.pairIndex) + storageT.pendingMarketOpenCount(msg.sender, t.pairIndex) 
-            + storageT.openLimitOrdersCount(msg.sender, t.pairIndex) < storageT.maxTradesPerPair(), 
-            "MAX_TRADES_PER_PAIR");
-
-        require(storageT.pendingOrderIdsCount(msg.sender) < storageT.maxPendingMarketOrders(), 
-            "MAX_PENDING_ORDERS");
-
-        require(t.positionSizeDai <= maxPosDai, "ABOVE_MAX_POS");
-        require(t.positionSizeDai * t.leverage >= pairsStored.pairMinLevPosDai(t.pairIndex), "BELOW_MIN_POS");
-
-        require(t.leverage > 0 && t.leverage >= pairsStored.pairMinLeverage(t.pairIndex) 
-            && t.leverage <= pairsStored.pairMaxLeverage(t.pairIndex), 
-            "LEVERAGE_INCORRECT");
-
-        require(_spreadReductionId == 0 || storageT.nfts(_spreadReductionId-1).balanceOf(msg.sender) > 0,
-            "NO_CORRESPONDING_NFT_SPREAD_REDUCTION");
-
-        require(t.tp == 0 || (t.buy ? t.tp > t.openPrice : t.tp < t.openPrice), "WRONG_TP");
-        require(t.sl == 0 || (t.buy ? t.sl < t.openPrice : t.sl > t.openPrice), "WRONG_SL");
-
-        (uint priceImpactP, ) = pairInfos.getTradePriceImpact(
-            0,
+        (uint priceImpactP, uint priceAfterImpact) = pairInfos.getTradePriceImpact(
+            marketExecutionPrice(a.price, a.spreadP, o.spreadReductionP, t.buy),
             t.pairIndex,
             t.buy,
             t.positionSizeDai * t.leverage
         );
 
-        require(priceImpactP * t.leverage <= pairInfos.maxNegativePnlOnOpenP(), "PRICE_IMPACT_TOO_HIGH");
+        t.openPrice = priceAfterImpact;
 
-        storageT.transferDai(msg.sender, address(storageT), t.positionSizeDai);
+        uint maxSlippage = o.wantedPrice * o.slippageP / 100 / PRECISION;
 
-        if(_type != NftRewardsInterfaceV6.OpenLimitOrderType.LEGACY){
-            uint index = storageT.firstEmptyOpenLimitIndex(msg.sender, t.pairIndex);
+        if(isPaused || a.price == 0
+        || (t.buy ? t.openPrice > o.wantedPrice + maxSlippage : t.openPrice < o.wantedPrice - maxSlippage)
+        || (t.tp > 0 && (t.buy ? t.openPrice >= t.tp : t.openPrice <= t.tp))
+        || (t.sl > 0 && (t.buy ? t.openPrice <= t.sl : t.openPrice >= t.sl))
+        || !withinExposureLimits(t.pairIndex, t.buy, t.positionSizeDai, t.leverage)
+        || priceImpactP * t.leverage > pairInfos.maxNegativePnlOnOpenP()){
 
-            storageT.storeOpenLimitOrder(
-                StorageInterfaceV5.OpenLimitOrder(
-                    msg.sender,
-                    t.pairIndex,
-                    index,
-                    t.positionSizeDai,
-                    spreadReductionP,
-                    t.buy,
-                    t.leverage,
-                    t.tp,
-                    t.sl,
-                    t.openPrice,
-                    t.openPrice,
-                    block.number,
-                    0
+            storageT.transferDai(
+                address(storageT), 
+                t.trader, 
+                t.positionSizeDai - storageT.handleDevGovFees(
+                    t.pairIndex, 
+                    t.positionSizeDai * t.leverage, 
+                    true, 
+                    true
                 )
             );
 
-            aggregator.nftRewards().setOpenLimitOrderType(msg.sender, t.pairIndex, index, _type);
-
-            emit OpenLimitPlaced(msg.sender, t.pairIndex, index);
+            emit MarketOpenCanceled(a.orderId, t.trader, t.pairIndex);
 
         }else{
-            uint orderId = aggregator.getPrice(
-                t.pairIndex, 
-                AggregatorInterfaceV6.OrderType.MARKET_OPEN, 
-                t.positionSizeDai * t.leverage
-            );
+            (StorageInterfaceV5.Trade memory finalTrade, uint tokenPriceDai) = registerTrade(t, 1500, 0);
 
-            storageT.storePendingMarketOrder(
-                StorageInterfaceV5.PendingMarketOrder(
-                    StorageInterfaceV5.Trade(
-                        msg.sender,
-                        t.pairIndex,
-                        0, 0,
-                        t.positionSizeDai,
-                        0, 
-                        t.buy,
-                        t.leverage,
-                        t.tp,
-                        t.sl
-                    ),
-                    0,
-                    t.openPrice,
-                    _slippageP,
-                    spreadReductionP,
-                    0
-                ), orderId, true
+            emit MarketExecuted(
+                a.orderId,
+                finalTrade,
+                true,
+                finalTrade.openPrice,
+                priceImpactP,
+                finalTrade.initialPosToken * tokenPriceDai / PRECISION,
+                0,
+                0
             );
-
-            emit MarketOrderInitiated(msg.sender, t.pairIndex, true, orderId);
         }
 
-        storageT.storeReferral(msg.sender, _referral);
+        storageT.unregisterPendingMarketOrder(a.orderId, true);
     }
-
-    // Close trade (MARKET)
-    function closeTradeMarket(uint _pairIndex, uint _index) external notContract notDone{
+    function closeTradeMarketCallback(AggregatorAnswer memory a) external onlyPriceAggregator notDone{
         
-        StorageInterfaceV5.Trade memory t = storageT.openTrades(msg.sender, _pairIndex, _index);
-        StorageInterfaceV5.TradeInfo memory i = storageT.openTradesInfo(msg.sender, _pairIndex, _index);
+        StorageInterfaceV5.PendingMarketOrder memory o = storageT.reqID_pendingMarketOrder(a.orderId);
+        if(o.block == 0){ return; }
 
-        require(storageT.pendingOrderIdsCount(msg.sender) < storageT.maxPendingMarketOrders(), 
-            "MAX_PENDING_ORDERS");
-        require(!i.beingMarketClosed, "ALREADY_BEING_CLOSED");
-        require(t.leverage > 0, "NO_TRADE");
+        StorageInterfaceV5.Trade memory t = storageT.openTrades(o.trade.trader, o.trade.pairIndex, o.trade.index);
 
-        uint orderId = storageT.priceAggregator().getPrice(
-            _pairIndex, 
-            AggregatorInterfaceV6.OrderType.MARKET_CLOSE, 
-            t.initialPosToken * t.leverage * i.tokenPriceDai / PRECISION
-        );
+        if(t.leverage > 0){
 
-        storageT.storePendingMarketOrder(
-            StorageInterfaceV5.PendingMarketOrder(
-                StorageInterfaceV5.Trade(msg.sender, _pairIndex, _index, 0, 0, 0, false, 0, 0, 0),
-                0, 0, 0, 0, 0
-            ), orderId, false
-        );
-
-        emit MarketOrderInitiated(msg.sender, _pairIndex, false, orderId);
-    }
-
-    // Manage limit order (OPEN)
-    function updateOpenLimitOrder(
-        uint _pairIndex, 
-        uint _index, 
-        uint _price,        // PRECISION
-        uint _tp,
-        uint _sl
-    ) external notContract notDone{
-
-        require(storageT.hasOpenLimitOrder(msg.sender, _pairIndex, _index), "NO_LIMIT");
-
-        StorageInterfaceV5.OpenLimitOrder memory o = storageT.getOpenLimitOrder(msg.sender, _pairIndex, _index);
-        require(block.number - o.block >= limitOrdersTimelock, "LIMIT_TIMELOCK");
-
-        require(_tp == 0 || (o.buy ? _price < _tp : _price > _tp), "WRONG_TP");
-        require(_sl == 0 || (o.buy ? _price > _sl : _price < _sl), "WRONG_SL");
-
-        o.minPrice = _price;
-        o.maxPrice = _price;
-
-        o.tp = _tp;
-        o.sl = _sl;
-
-        storageT.updateOpenLimitOrder(o);
-
-        emit OpenLimitUpdated(msg.sender, _pairIndex, _index, _price, _tp, _sl);
-    }
-    function cancelOpenLimitOrder(uint _pairIndex, uint _index) external notContract notDone{
-
-        require(storageT.hasOpenLimitOrder(msg.sender, _pairIndex, _index), "NO_LIMIT");
-
-        StorageInterfaceV5.OpenLimitOrder memory o = storageT.getOpenLimitOrder(msg.sender, _pairIndex, _index);
-        require(block.number - o.block >= limitOrdersTimelock, "LIMIT_TIMELOCK");
-
-        storageT.transferDai(address(storageT), msg.sender, o.positionSize);
-        storageT.unregisterOpenLimitOrder(msg.sender, _pairIndex, _index);
-
-        emit OpenLimitCanceled(msg.sender, _pairIndex, _index);
-    }
-
-    // Manage limit order (TP/SL)
-    function updateTp(uint _pairIndex, uint _index, uint _newTp) external notContract notDone{
-
-        StorageInterfaceV5.Trade memory t = storageT.openTrades(msg.sender, _pairIndex, _index);
-        StorageInterfaceV5.TradeInfo memory i = storageT.openTradesInfo(msg.sender, _pairIndex, _index);
-
-        require(t.leverage > 0, "NO_TRADE");
-        require(block.number - i.tpLastUpdated >= limitOrdersTimelock, "LIMIT_TIMELOCK");
-
-        storageT.updateTp(msg.sender, _pairIndex, _index, _newTp);
-
-        emit TpUpdated(msg.sender, _pairIndex, _index, _newTp);
-    }
-    function updateSl(uint _pairIndex, uint _index, uint _newSl) external notContract notDone{
-
-        StorageInterfaceV5.Trade memory t = storageT.openTrades(msg.sender, _pairIndex, _index);
-        StorageInterfaceV5.TradeInfo memory i = storageT.openTradesInfo(msg.sender, _pairIndex, _index);
-
-        require(t.leverage > 0, "NO_TRADE");
-
-        uint maxSlDist = t.openPrice * MAX_SL_P / 100 / t.leverage;
-        require(_newSl == 0 || (t.buy ? _newSl >= t.openPrice - maxSlDist : _newSl <= t.openPrice + maxSlDist), 
-            "SL_TOO_BIG");
-        
-        require(block.number - i.slLastUpdated >= limitOrdersTimelock, "LIMIT_TIMELOCK");
-
-        AggregatorInterfaceV6 aggregator = storageT.priceAggregator();
-
-        if(_newSl == 0 || !aggregator.pairsStorage().guaranteedSlEnabled(_pairIndex)){
-
-            storageT.updateSl(msg.sender, _pairIndex, _index, _newSl);
-            emit SlUpdated(msg.sender, _pairIndex, _index, _newSl);
-
-        }else{
-            uint levPosDai = t.initialPosToken * i.tokenPriceDai * t.leverage;
-
-            t.initialPosToken -= storageT.handleDevGovFees(
-                t.pairIndex, 
-                levPosDai / 2 / aggregator.tokenPriceDai(),
-                false,
-                false
-            );
-
-            storageT.updateTrade(t);
-
-            uint orderId = aggregator.getPrice(
-                _pairIndex,
-                AggregatorInterfaceV6.OrderType.UPDATE_SL, 
-                levPosDai / PRECISION
-            );
-
-            aggregator.storePendingSlOrder(
-                orderId, 
-                AggregatorInterfaceV6.PendingSl(msg.sender, _pairIndex, _index, t.openPrice, t.buy, _newSl)
-            );
+            StorageInterfaceV5.TradeInfo memory i = storageT.openTradesInfo(t.trader, t.pairIndex, t.index);
+            AggregatorInterfaceV6 aggregator = storageT.priceAggregator();
             
-            emit SlUpdateInitiated(msg.sender, _pairIndex, _index, _newSl, orderId);
-        }
-    }
+            uint tokenPriceDai = aggregator.tokenPriceDai();
+            uint levPosToken = t.initialPosToken * i.tokenPriceDai * t.leverage / tokenPriceDai;
 
-    // Execute limit order
-    function executeNftOrder(
-        StorageInterfaceV5.LimitOrder _orderType, 
-        address _trader, 
-        uint _pairIndex, 
-        uint _index,
-        uint _nftId, 
-        uint _nftType
-    ) external notContract notDone{
+            if(a.price == 0){
+               
+                uint feeToken = storageT.handleDevGovFees(t.pairIndex, levPosToken, false, true);
 
-        require(_nftType >= 1 && _nftType <= 5, "WRONG_NFT_TYPE");
-        require(storageT.nfts(_nftType-1).ownerOf(_nftId) == msg.sender, "NO_NFT");
-        require(block.number >= storageT.nftLastSuccess(_nftId) + storageT.nftSuccessTimelock(),
-            "SUCCESS_TIMELOCK");
+                if(t.initialPosToken > feeToken){
+                    t.initialPosToken -= feeToken;
+                    storageT.updateTrade(t);
+                }else{
+                    unregisterTrade(t, -100, 0, i.openInterestDai/t.leverage, 0, 0, 0);
+                }
 
-        StorageInterfaceV5.Trade memory t;
+                emit MarketCloseCanceled(a.orderId, t.trader, t.pairIndex, t.index);
 
-        if(_orderType == StorageInterfaceV5.LimitOrder.OPEN){
-            require(storageT.hasOpenLimitOrder(_trader, _pairIndex, _index), "NO_LIMIT");
+            }else{
+                Values memory v;
+                v.profitP = currentPercentProfit(t.openPrice, a.price, t.buy, t.leverage);
+                v.posDai = t.initialPosToken * i.tokenPriceDai / PRECISION;
 
-        }else{
-            t = storageT.openTrades(_trader, _pairIndex, _index);
+                uint daiSentToTrader = unregisterTrade(
+                    t,
+                    v.profitP,
+                    v.posDai,
+                    i.openInterestDai / t.leverage,
+                    levPosToken * aggregator.pairsStorage().pairCloseFeeP(t.pairIndex) / 100 / PRECISION,
+                    0,
+                    tokenPriceDai
+                );
 
-            require(t.leverage > 0, "NO_TRADE");
-            require(_orderType != StorageInterfaceV5.LimitOrder.SL || t.sl > 0, "NO_SL");
-
-            if(_orderType == StorageInterfaceV5.LimitOrder.LIQ){
-                uint liqPrice = getTradeLiquidationPrice(t);
-                require(t.sl == 0 || (t.buy ? liqPrice > t.sl : liqPrice < t.sl), "HAS_SL");
+                emit MarketExecuted(a.orderId, t, false, a.price, 0, v.posDai, v.profitP, daiSentToTrader);
             }
         }
+
+        storageT.unregisterPendingMarketOrder(a.orderId, false);
+    }
+    function executeNftOpenOrderCallback(AggregatorAnswer memory a) external onlyPriceAggregator notDone{
+
+        StorageInterfaceV5.PendingNftOrder memory n = storageT.reqID_pendingNftOrder(a.orderId);
+        NftRewardsInterfaceV6 nftIncentives = storageT.priceAggregator().nftRewards();
+
+        if(!isPaused && a.price != 0
+        && storageT.hasOpenLimitOrder(n.trader, n.pairIndex, n.index)
+        && block.number >= storageT.nftLastSuccess(n.nftId) + storageT.nftSuccessTimelock()){
+
+            StorageInterfaceV5.OpenLimitOrder memory o = storageT.getOpenLimitOrder(n.trader, n.pairIndex, n.index);
+            NftRewardsInterfaceV6.OpenLimitOrderType t = nftIncentives.openLimitOrderTypes(n.trader, n.pairIndex, n.index);
+
+            (uint priceImpactP, uint priceAfterImpact) = pairInfos.getTradePriceImpact(
+                marketExecutionPrice(a.price, a.spreadP, o.spreadReductionP, o.buy),
+                o.pairIndex,
+                o.buy,
+                o.positionSize * o.leverage
+            );
+
+            a.price = priceAfterImpact;
+
+            if((t == NftRewardsInterfaceV6.OpenLimitOrderType.LEGACY ? (a.price >= o.minPrice && a.price <= o.maxPrice) :
+                t == NftRewardsInterfaceV6.OpenLimitOrderType.REVERSAL ? (o.buy ? a.price <= o.maxPrice : a.price >= o.minPrice) :
+                (o.buy ? a.price >= o.minPrice : a.price <= o.maxPrice))
+            && withinExposureLimits(o.pairIndex, o.buy, o.positionSize, o.leverage)
+            && priceImpactP * o.leverage <= pairInfos.maxNegativePnlOnOpenP()){
+
+                (StorageInterfaceV5.Trade memory finalTrade, uint tokenPriceDai) = registerTrade(
+                    StorageInterfaceV5.Trade(
+                        o.trader,
+                        o.pairIndex,
+                        0, 0,
+                        o.positionSize,
+                        t == NftRewardsInterfaceV6.OpenLimitOrderType.REVERSAL ? o.buy ? o.maxPrice : o.minPrice : a.price,
+                        o.buy,
+                        o.leverage,
+                        o.tp,
+                        o.sl
+                    ), 
+                    n.nftId,
+                    n.index
+                );
+
+                storageT.unregisterOpenLimitOrder(o.trader, o.pairIndex, o.index);
+
+                emit LimitExecuted(
+                    a.orderId,
+                    n.index,
+                    finalTrade,
+                    n.nftHolder,
+                    StorageInterfaceV5.LimitOrder.OPEN,
+                    finalTrade.openPrice,
+                    priceImpactP,
+                    finalTrade.initialPosToken * tokenPriceDai / PRECISION,
+                    0,
+                    0
+                );
+            }
+        }
+
+        nftIncentives.unregisterTrigger(NftRewardsInterfaceV6.TriggeredLimitId(n.trader, n.pairIndex, n.index, n.orderType));
+        storageT.unregisterPendingNftOrder(a.orderId);
+    }
+    function executeNftCloseOrderCallback(AggregatorAnswer memory a) external onlyPriceAggregator notDone{
+        
+        StorageInterfaceV5.PendingNftOrder memory o = storageT.reqID_pendingNftOrder(a.orderId);
+        StorageInterfaceV5.Trade memory t = storageT.openTrades(o.trader, o.pairIndex, o.index);
 
         AggregatorInterfaceV6 aggregator = storageT.priceAggregator();
         NftRewardsInterfaceV6 nftIncentives = aggregator.nftRewards();
 
-        NftRewardsInterfaceV6.TriggeredLimitId memory triggeredLimitId = NftRewardsInterfaceV6.TriggeredLimitId(
-            _trader, _pairIndex, _index, _orderType
-        );
+        if(a.price != 0
+        && t.leverage > 0 && block.number >= storageT.nftLastSuccess(o.nftId) + storageT.nftSuccessTimelock()){
 
-        if(!nftIncentives.triggered(triggeredLimitId) || nftIncentives.timedOut(triggeredLimitId)){
-            
-            uint leveragedPosDai;
+            StorageInterfaceV5.TradeInfo memory i = storageT.openTradesInfo(t.trader, t.pairIndex, t.index);
+            PairsStorageInterfaceV6 pairsStored = aggregator.pairsStorage();
+            Values memory v;
 
-            if(_orderType == StorageInterfaceV5.LimitOrder.OPEN){
-                StorageInterfaceV5.OpenLimitOrder memory l = storageT.getOpenLimitOrder(_trader, _pairIndex, _index);
-                leveragedPosDai = l.positionSize * l.leverage;
+            v.price = pairsStored.guaranteedSlEnabled(t.pairIndex) ?
+                        o.orderType == StorageInterfaceV5.LimitOrder.TP ? t.tp : 
+                        o.orderType == StorageInterfaceV5.LimitOrder.SL ? t.sl : a.price : a.price;
 
-                (uint priceImpactP, ) = pairInfos.getTradePriceImpact(
-                    0,
-                    l.pairIndex,
-                    l.buy,
-                    leveragedPosDai
+            v.profitP = currentPercentProfit(t.openPrice, v.price, t.buy, t.leverage);
+
+            v.tokenPriceDai = aggregator.tokenPriceDai();
+            v.posToken = t.initialPosToken * i.tokenPriceDai / v.tokenPriceDai;
+            v.posDai = t.initialPosToken * i.tokenPriceDai / PRECISION;
+
+            if(o.orderType == StorageInterfaceV5.LimitOrder.LIQ){
+                uint liqPrice = pairInfos.getTradeLiquidationPrice(
+                    t.trader,
+                    t.pairIndex,
+                    t.index,
+                    t.openPrice,
+                    t.buy,
+                    v.posDai,
+                    t.leverage
                 );
-                
-                require(priceImpactP * l.leverage <= pairInfos.maxNegativePnlOnOpenP(), "PRICE_IMPACT_TOO_HIGH");
+
+                v.nftReward = (t.buy ? a.price <= liqPrice : a.price >= liqPrice) ? v.posToken * 5 / 100 : 0;
             }else{
-                StorageInterfaceV5.TradeInfo memory i = storageT.openTradesInfo(_trader, _pairIndex, _index);
-                leveragedPosDai = t.initialPosToken * i.tokenPriceDai * t.leverage / PRECISION;
+                v.nftReward = 
+                    (o.orderType == StorageInterfaceV5.LimitOrder.TP && t.tp > 0 && (t.buy ? a.price >= t.tp : a.price <= t.tp))
+                    || (o.orderType == StorageInterfaceV5.LimitOrder.SL && t.sl > 0 && (t.buy ? a.price <= t.sl : a.price >= t.sl)) ? 
+                    v.posToken * t.leverage * pairsStored.pairNftLimitOrderFeeP(t.pairIndex) / 100 / PRECISION : 0;
             }
 
-            storageT.transferLinkToAggregator(msg.sender, _pairIndex, leveragedPosDai);
+            if(v.nftReward > 0){
+                uint daiSentToTrader = unregisterTrade(
+                    t,
+                    v.profitP,
+                    v.posDai,
+                    i.openInterestDai/t.leverage,
+                    o.orderType == StorageInterfaceV5.LimitOrder.LIQ ?
+                        v.nftReward :
+                        v.posToken * t.leverage * pairsStored.pairCloseFeeP(t.pairIndex) / 100 / PRECISION,
+                    v.nftReward,
+                    v.tokenPriceDai
+                );
 
-            uint orderId = aggregator.getPrice(
-                _pairIndex, 
-                _orderType == StorageInterfaceV5.LimitOrder.OPEN ? 
-                    AggregatorInterfaceV6.OrderType.LIMIT_OPEN : 
-                    AggregatorInterfaceV6.OrderType.LIMIT_CLOSE,
-                leveragedPosDai
-            );
+                nftIncentives.distributeNftReward(
+                    NftRewardsInterfaceV6.TriggeredLimitId(o.trader, o.pairIndex, o.index, o.orderType),
+                    v.nftReward
+                );
 
-            storageT.storePendingNftOrder(
-                StorageInterfaceV5.PendingNftOrder(
-                    msg.sender,
-                    _nftId,
-                    _trader,
-                    _pairIndex,
-                    _index,
-                    _orderType
-                ), orderId
-            );
+                storageT.increaseNftRewards(o.nftId, v.nftReward);
 
-            nftIncentives.storeFirstToTrigger(triggeredLimitId, msg.sender);
-            emit NftOrderInitiated(msg.sender, _trader, _pairIndex, orderId);
-
-        }else{
-            nftIncentives.storeTriggerSameBlock(triggeredLimitId, msg.sender);
-            emit NftOrderSameBlock(msg.sender, _trader, _pairIndex);
+                emit LimitExecuted(a.orderId, o.index, t, o.nftHolder, o.orderType, v.price, 0, v.posDai, v.profitP, daiSentToTrader);
+            }
         }
+
+        nftIncentives.unregisterTrigger(NftRewardsInterfaceV6.TriggeredLimitId(o.trader, o.pairIndex, o.index, o.orderType));
+        storageT.unregisterPendingNftOrder(a.orderId);
     }
-    // Avoid stack too deep error in executeNftOrder
-    function getTradeLiquidationPrice(StorageInterfaceV5.Trade memory t) private view returns(uint){
-        return pairInfos.getTradeLiquidationPrice(
-            t.trader,
-            t.pairIndex,
-            t.index,
-            t.openPrice,
-            t.buy,
-            t.initialPosToken * storageT.openTradesInfo(t.trader, t.pairIndex, t.index).tokenPriceDai / PRECISION,
-            t.leverage
-        );
+    function updateSlCallback(AggregatorAnswer memory a) external onlyPriceAggregator notDone{
+        
+        AggregatorInterfaceV6 aggregator = storageT.priceAggregator();
+        AggregatorInterfaceV6.PendingSl memory o = aggregator.pendingSlOrders(a.orderId);
+        
+        StorageInterfaceV5.Trade memory t = storageT.openTrades(o.trader, o.pairIndex, o.index);
+
+        if(a.price != 0 && t.leverage > 0 
+        && t.buy == o.buy && t.openPrice == o.openPrice
+        && (t.buy ? o.newSl <= a.price : o.newSl >= a.price)){
+
+            storageT.updateSl(o.trader, o.pairIndex, o.index, o.newSl);
+            emit SlUpdated(a.orderId, o.trader, o.pairIndex, o.index, o.newSl);
+            
+        }else{
+            emit SlCanceled(a.orderId, o.trader, o.pairIndex, o.index);
+        }
+
+        aggregator.unregisterPendingSlOrder(a.orderId);
     }
 
-    // Market timeout
-    function openTradeMarketTimeout(uint _order) external notContract notDone{
+    // Shared code between market & limit callbacks
+    function registerTrade(
+        StorageInterfaceV5.Trade memory _trade, 
+        uint _nftId, 
+        uint _limitIndex
+    ) private returns(StorageInterfaceV5.Trade memory, uint){
 
-        StorageInterfaceV5.PendingMarketOrder memory o = storageT.reqID_pendingMarketOrder(_order);
-        StorageInterfaceV5.Trade memory t = o.trade;
+        AggregatorInterfaceV6 aggregator = storageT.priceAggregator();
+        PairsStorageInterfaceV6 pairsStored = aggregator.pairsStorage();
 
-        require(o.block > 0 && block.number >= o.block + marketOrdersTimeout, 
-            "WAIT_TIMEOUT");
-        require(t.trader == msg.sender, "NOT_YOUR_ORDER");
-        require(t.leverage > 0, "WRONG_MARKET_ORDER_TYPE");
+        _trade.positionSizeDai -= storageT.handleDevGovFees(_trade.pairIndex, _trade.positionSizeDai * _trade.leverage, true, true);
 
-        storageT.transferDai(address(storageT), msg.sender, t.positionSizeDai);
-        storageT.unregisterPendingMarketOrder(_order, true);
+        storageT.vault().receiveDaiFromTrader(_trade.trader, _trade.positionSizeDai, 0);
 
-        emit ChainlinkCallbackTimeout(_order, o);
-    }
-    function closeTradeMarketTimeout(uint _order) external notContract notDone{
+        uint tokenPriceDai = aggregator.tokenPriceDai();
+        _trade.initialPosToken = _trade.positionSizeDai * PRECISION / tokenPriceDai;
+        _trade.positionSizeDai = 0;
 
-        StorageInterfaceV5.PendingMarketOrder memory o = storageT.reqID_pendingMarketOrder(_order);
-        StorageInterfaceV5.Trade memory t = o.trade;
+        {
+            uint rTokens = _trade.initialPosToken * _trade.leverage * pairsStored.pairReferralFeeP(_trade.pairIndex) / 100 / PRECISION;
+            address referral = storageT.getReferral(_trade.trader);
 
-        require(o.block > 0 && block.number >= o.block + marketOrdersTimeout, 
-            "WAIT_TIMEOUT");
-        require(t.trader == msg.sender, "NOT_YOUR_ORDER");
-        require(t.leverage == 0, "WRONG_MARKET_ORDER_TYPE");
+            if(referral != address(0)){ 
+                rTokens /= 2;
+                storageT.handleTokens(referral, rTokens, true);
+                storageT.increaseReferralRewards(referral, rTokens);
+            }
 
-        storageT.unregisterPendingMarketOrder(_order, false);
+            _trade.initialPosToken -= rTokens;
+        }
 
-        (bool success, ) = address(this).delegatecall(
-            abi.encodeWithSignature(
-                "closeTradeMarket(uint256,uint256)",
-                t.pairIndex,
-                t.index
+        if(_nftId < 1500){
+            uint nTokens = _trade.initialPosToken * _trade.leverage * pairsStored.pairNftLimitOrderFeeP(_trade.pairIndex) / 100 / PRECISION;
+            _trade.initialPosToken -= nTokens;
+            
+            aggregator.nftRewards().distributeNftReward(
+                NftRewardsInterfaceV6.TriggeredLimitId(
+                    _trade.trader, _trade.pairIndex, _limitIndex, StorageInterfaceV5.LimitOrder.OPEN
+                ), nTokens
+            );
+
+            storageT.increaseNftRewards(_nftId, nTokens);
+        }
+
+        _trade.index = storageT.firstEmptyTradeIndex(_trade.trader, _trade.pairIndex);
+        _trade.tp = correctTp(_trade.openPrice, _trade.leverage, _trade.tp, _trade.buy);
+        _trade.sl = correctSl(_trade.openPrice, _trade.leverage, _trade.sl, _trade.buy);
+        
+        pairInfos.storeTradeInitialAccFees(_trade.trader, _trade.pairIndex, _trade.index, _trade.buy);
+
+        pairsStored.updateGroupCollateral(_trade.pairIndex, _trade.initialPosToken * tokenPriceDai / PRECISION, _trade.buy, true);
+
+        storageT.storeTrade(
+            _trade,
+            StorageInterfaceV5.TradeInfo(
+                0, 
+                tokenPriceDai, 
+                _trade.initialPosToken * _trade.leverage * tokenPriceDai / PRECISION,
+                0,
+                0,
+                false
             )
         );
 
-        if(!success){
-            emit CouldNotCloseTrade(msg.sender, t.pairIndex, t.index);
+        return (_trade, tokenPriceDai);
+    }
+    function unregisterTrade(
+        StorageInterfaceV5.Trade memory _trade,
+        int _percentProfit,    // PRECISION
+        uint _currentDaiPos,   // 1e18
+        uint _initialDaiPos,   // 1e18
+        uint _lpFeeToken,      // 1e18
+        uint _amountNftToken,  // 1e18
+        uint _tokenPriceDai    // PRECISION
+    ) private returns(uint daiSentToTrader){
+
+        storageT.distributeLpRewards(_lpFeeToken * (100 - vaultFeeP) / 100);
+        storageT.vault().distributeRewardDai(_lpFeeToken * vaultFeeP * _tokenPriceDai / 100 / PRECISION);
+
+        daiSentToTrader = pairInfos.getTradeValue(
+            _trade.trader,
+            _trade.pairIndex,
+            _trade.index,
+            _trade.buy,
+            _currentDaiPos,
+            _trade.leverage,
+            _percentProfit,
+            (_lpFeeToken + _amountNftToken) * _tokenPriceDai / PRECISION
+        );
+
+        if(daiSentToTrader > 0){
+            storageT.vault().sendDaiToTrader(_trade.trader, daiSentToTrader);
         }
 
-        emit ChainlinkCallbackTimeout(_order, o);
+        storageT.priceAggregator().pairsStorage().updateGroupCollateral(_trade.pairIndex, _initialDaiPos, _trade.buy, false);
+        storageT.unregisterTrade(_trade.trader, _trade.pairIndex, _trade.index);
+    }
+
+    // Utils
+    function withinExposureLimits(uint _pairIndex, bool _buy, uint _positionSizeDai, uint _leverage) private view returns(bool){
+        PairsStorageInterfaceV6 pairsStored = storageT.priceAggregator().pairsStorage();
+        return storageT.openInterestDai(_pairIndex, _buy ? 0 : 1) + _positionSizeDai * _leverage <= storageT.openInterestDai(_pairIndex, 2)
+            && pairsStored.groupCollateral(_pairIndex, _buy) + _positionSizeDai <= pairsStored.groupMaxCollateral(_pairIndex);
+    }
+    function currentPercentProfit(uint openPrice, uint currentPrice, bool buy, uint leverage) private pure returns(int p){
+        int diff = buy ? int(currentPrice) - int(openPrice) : int(openPrice) - int(currentPrice);
+        int maxPnlP = int(MAX_GAIN_P) * int(PRECISION);
+        
+        p = diff * 100 * int(PRECISION) * int(leverage) / int(openPrice);
+        p = p > maxPnlP ? maxPnlP : p;
+    }
+    function correctTp(uint openPrice, uint leverage, uint tp, bool buy) private pure returns(uint){
+        if(tp == 0 || currentPercentProfit(openPrice, tp, buy, leverage) == int(MAX_GAIN_P) * int(PRECISION)){
+            uint tpDiff = openPrice * MAX_GAIN_P / leverage / 100;
+            return buy ? openPrice + tpDiff : tpDiff <= openPrice ? openPrice - tpDiff : 0;
+        }
+        return tp;
+    }
+    function correctSl(uint openPrice, uint leverage, uint sl, bool buy) private pure returns(uint){
+        if(sl > 0 && currentPercentProfit(openPrice, sl, buy, leverage) < int(MAX_SL_P) * int(PRECISION) * (-1)){
+            uint slDiff = openPrice * MAX_SL_P / leverage / 100;
+            return buy ? openPrice - slDiff : openPrice + slDiff;
+        }
+        return sl;
+    }
+    function marketExecutionPrice(uint _price, uint _spreadP, uint _spreadReductionP, bool _long) private pure returns (uint){
+        uint priceDiff = _price * (_spreadP - _spreadP * _spreadReductionP / 100) / 100 / PRECISION;
+        return _long ? _price + priceDiff : _price - priceDiff;
     }
 }

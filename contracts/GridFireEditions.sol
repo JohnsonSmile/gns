@@ -8,7 +8,7 @@
 // GNSPairInfosV6_1
 // GNSPairsStorageV6
 // GNSTradingStorageV5
-pragma solidity ^0.8.16;
+pragma solidity 0.8.14;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";

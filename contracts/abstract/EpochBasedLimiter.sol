@@ -4,7 +4,7 @@ import "@openzeppelin/contracts/security/Pausable.sol";
 
 import "./../interfaces/IEpochBasedLimiter.sol";
 
-pragma solidity 0.8.17;
+pragma solidity 0.8.14;
 
 abstract contract EpochBasedLimiter is Ownable, Pausable, IEpochBasedLimiter {
     

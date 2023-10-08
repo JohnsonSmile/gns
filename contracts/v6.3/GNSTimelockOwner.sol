@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 import '@openzeppelin/contracts/governance/TimelockController.sol';
 
-pragma solidity 0.8.17;
+pragma solidity 0.8.14;
 
 contract GNSTimelockOwner is TimelockController {
   constructor(

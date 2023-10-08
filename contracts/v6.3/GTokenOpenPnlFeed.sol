@@ -6,7 +6,7 @@ import '../interfaces/IGToken.sol';
 import '../interfaces/IOwnable.sol';
 import '../interfaces/IOpenTradesPnlFeed.sol';
 
-pragma solidity 0.8.17;
+pragma solidity 0.8.14;
 
 contract GTokenOpenPnlFeed is ChainlinkClient, IOpenTradesPnlFeed{
     using Chainlink for Chainlink.Request;

@@ -3,7 +3,7 @@ import { ERC721, ERC721Enumerable } from "@openzeppelin/contracts/token/ERC721/e
 import { AccessControlEnumerable } from "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import { IGNSNftDesign } from "../interfaces/IGNSNftDesign.sol";
 
-pragma solidity 0.8.17;
+pragma solidity 0.8.14;
 
 contract GainsNetworkNft1 is ERC721, ERC721Enumerable, AccessControlEnumerable{
     bytes32 public constant BRIDGE_ROLE = keccak256("BRIDGE_ROLE");

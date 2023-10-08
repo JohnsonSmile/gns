@@ -4,7 +4,7 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "./../interfaces/IERC20MintableBurnable.sol";
 import "./EpochBasedLimiter.sol";
 
-pragma solidity 0.8.17;
+pragma solidity 0.8.14;
 
 abstract contract ERC20BridgeRateLimiter is EpochBasedLimiter {
 
